@@ -1,0 +1,6 @@
+producto,vida_util_dias,costo_sobre_precio,dias_cobertura_regla_actual
+Leche 1 L,6,0.8,4.9
+Pan de caja,5,0.7,5.2
+Huevo 1 kg,21,0.82,5.0
+Arroz 1 kg,365,0.75,10.0
+Aceite 1 L,365,0.78,10.0
