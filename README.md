@@ -20,6 +20,8 @@ Python (pandas, statsmodels, SciPy) · censored negative binomial · inventory s
 | Average inventory (MXN at cost) | 49,756 | 34,959 | −30 % |
 | **Cost of poor replenishment** (lost margin + waste + holding cost) | **42,119** | **22,826** | **−46 %** |
 
+Uncertainty: resampling the 27 weeks of the evaluation period (bootstrap, 2,000 draws) gives a reduction of **32 % to 58 %** (95 % interval), or MXN 12,300 to 26,800 saved over the six months. The interval reflects week-to-week demand variation, not model-parameter uncertainty.
+
 ![Recorded sales versus estimated demand](reports/figures/ventas_vs_demanda.png)
 
 ## What makes this analysis different
@@ -75,7 +77,7 @@ python -m venv .venv
 pip install -r requirements-dev.txt
 
 python -m predix.generate          # optional: regenerate data/ (fixed seed)
-pytest                             # 13 tests: data, model and inventory
+pytest                             # 14 tests: data, model and inventory
 streamlit run streamlit_app.py
 jupyter lab notebooks/analisis_predix.ipynb
 ```

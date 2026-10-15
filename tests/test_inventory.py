@@ -27,3 +27,13 @@ def test_proposed_policy_beats_the_current_rule(tables, split, model):
     res = inv.compare_policies(split[1], model, tables["catalogo"], service_by_sku=best)
     total = res.groupby("politica")[["costo_reposicion_mxn", "merma_mxn", "unidades_perdidas"]].sum()
     assert (total.loc["Propuesta"] < total.loc["Regla actual"]).all()
+
+
+def test_saving_interval_is_consistent_and_excludes_zero(tables, split, model):
+    best, _ = inv.tune_service_levels(split[0], model, tables["catalogo"], levels=[0.7, 0.9, 0.98])
+    res = inv.compare_policies(split[1], model, tables["catalogo"], service_by_sku=best)
+    total = res.groupby("politica")["costo_reposicion_mxn"].sum()
+    boot = inv.saving_bootstrap(split[1], model, tables["catalogo"], best, n=500)
+    assert abs(boot["ahorro_mxn"] - (total["Regla actual"] - total["Propuesta"])) < 1e-6 * total.sum()
+    low, high = boot["ahorro_ic95_mxn"]
+    assert 0 < low <= boot["ahorro_mxn"] <= high

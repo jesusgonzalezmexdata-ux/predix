@@ -94,3 +94,41 @@ def tune_service_levels(df, model, catalog, levels=SERVICE_LEVELS):
     proposed = results[results["politica"] == "Propuesta"]
     best = proposed.loc[proposed.groupby(["tienda", "producto"])["utilidad_mxn"].idxmax()]
     return best.set_index(["tienda", "producto"])["nivel_servicio"].to_dict(), proposed
+
+
+def _daily_cost(sim):
+    margin = sim["precio"] - sim["costo"]
+    lost = sim["demanda"] - sim["ventas"]
+    return lost * margin + sim["merma"] * sim["costo"] + sim["inventario_final"] * sim["costo"] * HOLDING_RATE / 365
+
+
+def saving_bootstrap(df, model, catalog, service_by_sku, n=2000, seed=42):
+    """Intervalo del ahorro con bootstrap por semanas (remuestrea semanas completas de todas las tiendas).
+
+    Captura la variación semana a semana de la demanda; no captura la dependencia del inventario entre
+    semanas ni la incertidumbre de los parámetros del modelo.
+    """
+    shelf = catalog.set_index("producto")["vida_util_dias"]
+    df = df.merge(catalog[["producto", "costo_sobre_precio"]], on="producto")
+    df["demanda_estimada"] = estimated_demand(df, model)
+    df["mu"] = model.predict(df)
+    owner = owner_levels(df)
+    daily = []
+    for (store, product), sku in df.sort_values("fecha").groupby(["tienda", "producto"]):
+        demand = sku["demanda_estimada"].to_numpy()
+        initial = sku["inventario_inicial"].iat[0]
+        levels = dynamic_levels(pd.DatetimeIndex(sku["fecha"]), sku["mu"].to_numpy(), model.alpha,
+                                service_by_sku[(store, product)])
+        cur = _daily_cost(simulate(sku, demand, shelf[product], owner[(store, product)], initial))
+        new = _daily_cost(simulate(sku, demand, shelf[product], levels, initial))
+        daily.append(pd.DataFrame({"fecha": pd.DatetimeIndex(sku["fecha"]), "actual": cur.to_numpy(), "propuesta": new.to_numpy()}))
+    days = pd.concat(daily).groupby("fecha").sum()
+    weeks = days.groupby(days.index.to_period("W")).sum()
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, len(weeks), size=(n, len(weeks)))
+    cur, new = weeks["actual"].to_numpy()[idx].sum(axis=1), weeks["propuesta"].to_numpy()[idx].sum(axis=1)
+    reduction = 1 - new / cur
+    q = lambda v: [float(np.percentile(v, 2.5)), float(np.percentile(v, 97.5))]  # noqa: E731
+    return {"semanas": int(len(weeks)), "ahorro_mxn": float(weeks["actual"].sum() - weeks["propuesta"].sum()),
+            "ahorro_ic95_mxn": q(cur - new), "reduccion": float(1 - weeks["propuesta"].sum() / weeks["actual"].sum()),
+            "reduccion_ic95": q(reduction)}

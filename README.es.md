@@ -20,6 +20,8 @@ Python (pandas, statsmodels, SciPy) · binomial negativa censurada · simulació
 | Inventario promedio (MXN a costo) | 49,756 | 34,959 | −30 % |
 | **Costo de reponer mal** (margen perdido + merma + costo de inventario) | **42,119** | **22,826** | **−46 %** |
 
+Incertidumbre: remuestreando las 27 semanas del periodo de evaluación (bootstrap, 2,000 repeticiones) la reducción va de **32 % a 58 %** (intervalo de 95 %), o de 12,300 a 26,800 MXN ahorrados en los seis meses. El intervalo refleja la variación semanal de la demanda, no la incertidumbre de los parámetros del modelo.
+
 ![Ventas registradas frente a demanda estimada](reports/figures/ventas_vs_demanda.png)
 
 ## Qué hace diferente este análisis
@@ -75,7 +77,7 @@ python -m venv .venv
 pip install -r requirements-dev.txt
 
 python -m predix.generate          # opcional: regenera data/ (semilla fija)
-pytest                             # 13 pruebas: datos, modelo e inventario
+pytest                             # 14 pruebas: datos, modelo e inventario
 streamlit run streamlit_app.py
 jupyter lab notebooks/analisis_predix.ipynb
 ```
