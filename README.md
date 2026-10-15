@@ -1,115 +1,121 @@
-# Predix: demanda e inventario para abarrotes
+# Predix: demand and inventory for small grocery stores
 
-**Cuánto pedir cada lunes y jueves en una tienda de abarrotes, a partir de la demanda real y no solo de lo que se alcanzó a vender.**
+*English · [Español](README.es.md)*
 
-Python (pandas, statsmodels, SciPy) · binomial negativa censurada · simulación de inventario · Streamlit
+**How much to order every Monday and Thursday in a corner grocery store, based on real demand and not only on what the store managed to sell.**
 
-> **Datos sintéticos.** Tres tiendas ficticias, cinco productos básicos, 2024–2025. `predix/generate.py` simula la demanda (día de la semana, quincena, diciembre, precio y crecimiento) y la operación con la regla de pedido actual del dueño, incluidas caducidad y faltantes. Las cifras no corresponden a ningún negocio real.
+Python (pandas, statsmodels, SciPy) · censored negative binomial · inventory simulation · Streamlit
 
-## Resumen ejecutivo
+> **Synthetic data.** Three fictitious stores, five staple products, 2024–2025. `predix/generate.py` simulates demand (day of week, payday fortnight, December, price and growth) and the operation under the owner's current ordering rule, including expiry and stock-outs. The figures do not belong to any real business.
 
-**Con la regla actual ("surtir hasta X piezas lunes y jueves"), en 6 de cada 10 lunes cada tienda se queda sin leche, pan o huevo antes de cerrar, y al mismo tiempo tira el 3 % del pan. Un pedido calculado con el pronóstico de demanda reduce 46 % el costo de reponer mal y libera 30 % del capital en inventario.**
+## Executive summary
 
-| Indicador, julio a diciembre 2025 (simulación con la misma demanda) | Regla actual | Predix | Cambio |
+**With the current rule ("top up to X units on Mondays and Thursdays"), on 6 Mondays out of 10 each store runs out of milk, bread or eggs before closing, while it throws away 3 % of the bread. An order computed from the demand forecast cuts the cost of poor replenishment by 46 % and frees 30 % of the capital tied up in inventory.**
+
+| Indicator, July–December 2025 (simulation with the same demand) | Current rule | Predix | Change |
 |---|---|---|---|
-| Unidades que se dejaron de vender | 2,195 | 831 | −62 % |
-| Días con faltante (tienda × producto) | 104 | 74 | −29 % |
-| Merma (MXN a costo) | 17,109 | 8,171 | −52 % |
-| Inventario promedio (MXN a costo) | 49,756 | 34,959 | −30 % |
-| **Costo de reponer mal** (margen perdido + merma + costo de inventario) | **42,119** | **22,826** | **−46 %** |
+| Units not sold (lost sales) | 2,195 | 831 | −62 % |
+| Stock-out days (store × product) | 104 | 74 | −29 % |
+| Waste (MXN at cost) | 17,109 | 8,171 | −52 % |
+| Average inventory (MXN at cost) | 49,756 | 34,959 | −30 % |
+| **Cost of poor replenishment** (lost margin + waste + holding cost) | **42,119** | **22,826** | **−46 %** |
 
-![Ventas registradas frente a demanda estimada](reports/figures/ventas_vs_demanda.png)
+![Recorded sales versus estimated demand](reports/figures/ventas_vs_demanda.png)
 
-## Qué hace diferente este análisis
+## What makes this analysis different
 
-1. **Trata los faltantes como censura.** Un día agotado no dice "la demanda fue 40", sino "la demanda fue *al menos* 40". El modelo de demanda (binomial negativa) usa P(D ≥ venta) en esos días, una verosimilitud censurada al estilo Tobit para conteos. Como los datos son simulados se puede medir el sesgo de cada método:
+1. **It treats stock-outs as censoring.** A sold-out day does not say "demand was 40" but "demand was *at least* 40". The demand model (negative binomial) uses P(D ≥ sales) on those days, a Tobit-style censored likelihood for counts. Because the data are simulated, the bias of each method can be measured:
 
-   | Efecto | Valor real | Ventas como demanda | Excluyendo días agotados | **Censurado** |
+   | Effect | True value | Sales as demand | Excluding sold-out days | **Censored** |
    |---|---|---|---|---|
-   | Sábado vs. lunes | 1.42 | 1.57 | 1.46 | **1.41** |
-   | Elasticidad precio del huevo | −0.60 | −0.50 | −0.60 | **−0.60** |
-   | Diciembre | 1.12 | 1.10 | 1.11 | **1.12** |
+   | Saturday vs Monday | 1.42 | 1.57 | 1.46 | **1.41** |
+   | Price elasticity of eggs | −0.60 | −0.50 | −0.60 | **−0.60** |
+   | December | 1.12 | 1.10 | 1.11 | **1.12** |
 
-2. **Valida fuera de muestra.** Entrena con enero 2024 a junio 2025 y evalúa julio a diciembre 2025:
+2. **It validates out of sample.** Trained on January 2024 to June 2025, evaluated on July to December 2025:
 
-   | Pronóstico diario | WAPE | Sesgo |
+   | Daily forecast | WAPE | Bias |
    |---|---|---|
-   | Mismo día de la semana pasada | 31.7 % | −0.7 % |
-   | Promedio de 4 semanas | 25.4 % | −1.6 % |
-   | Binomial negativa (ventas como demanda) | 22.3 % | −2.3 % |
-   | **Binomial negativa censurada** | **22.1 %** | **−0.3 %** |
+   | Same weekday last week | 31.7 % | −0.7 % |
+   | 4-week average | 25.4 % | −1.6 % |
+   | Negative binomial (sales as demand) | 22.3 % | −2.3 % |
+   | **Censored negative binomial** | **22.1 %** | **−0.3 %** |
 
-   Las ventas perdidas estimadas quedan a 6 % de las reales, que solo se conocen porque los datos son simulados.
+   Estimated lost sales come within 6 % of the true ones, which are only known because the data are simulated.
 
-3. **No usa un nivel de servicio único.** El nivel objetivo de cada pedido es la demanda pronosticada hasta la siguiente entrega más un colchón calculado con la varianza del modelo. El nivel de servicio de cada producto se elige por simulación (es el problema del *newsvendor*):
-   - pan, que caduca en 5 días: ≈ 70 %;
-   - leche: 90–95 %;
-   - huevo, arroz y aceite: 98 %.
+3. **It does not use a single service level.** Each order's target level is the forecast demand until the next delivery plus a buffer from the model's variance. Each product's service level is chosen by simulation (the *newsvendor* problem):
+   - bread, which expires in 5 days: ≈ 70 %;
+   - milk: 90–95 %;
+   - eggs, rice and oil: 98 %.
 
 <p>
-  <img src="reports/figures/utilidad_por_nivel_de_servicio.png" width="49%" alt="Utilidad según el nivel de servicio">
-  <img src="reports/figures/pronostico_leche_tienda_c.png" width="49%" alt="Pronóstico con intervalo de 80 %">
+  <img src="reports/figures/utilidad_por_nivel_de_servicio.png" width="49%" alt="Profit by service level">
+  <img src="reports/figures/pronostico_leche_tienda_c.png" width="49%" alt="Forecast with an 80 % interval">
 </p>
 
-![Comparación de políticas](reports/figures/comparacion_politicas.png)
+![Policy comparison](reports/figures/comparacion_politicas.png)
 
-El análisis completo está en [`notebooks/analisis_predix.ipynb`](notebooks/analisis_predix.ipynb).
+The full analysis is in [`notebooks/analisis_predix.ipynb`](notebooks/analisis_predix.ipynb) (Spanish).
 
-## Tablero
+## Dashboard
 
-`streamlit_app.py` tiene cuatro pestañas:
-- **Pedido sugerido:** para cada día de pedido, inventario al cierre, demanda esperada hasta la siguiente entrega, nivel objetivo y pedido sugerido frente al de la regla actual. Se descarga en CSV.
-- **Pronóstico:** a 14 días con intervalo de 80 %, por tienda y producto.
-- **Patrones:** día de la semana, quincena y todos los efectos del modelo.
-- **Política de inventario:** simulación de las dos reglas, con un control para cambiar el nivel de servicio de cada producto.
+`streamlit_app.py` has four tabs:
+- **Suggested order:** for each ordering day, closing inventory, expected demand until the next delivery, target level and suggested order against the current rule's. Downloadable as CSV.
+- **Forecast:** 14 days ahead with an 80 % interval, by store and product.
+- **Patterns:** day of week, payday fortnight and all model effects.
+- **Inventory policy:** simulation of both rules, with a control to change each product's service level.
 
-![Tablero: política de inventario](reports/figures/tablero.png)
+![Dashboard: inventory policy](reports/figures/tablero.png)
 
-## Cómo ejecutarlo
+## How to run it
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate            # Windows · en macOS/Linux: source .venv/bin/activate
+.venv\Scripts\activate            # Windows · macOS/Linux: source .venv/bin/activate
 pip install -r requirements-dev.txt
 
-python -m predix.generate          # opcional: regenera data/ (semilla fija)
-pytest                             # 13 pruebas: datos, modelo e inventario
+python -m predix.generate          # optional: regenerate data/ (fixed seed)
+pytest                             # 13 tests: data, model and inventory
 streamlit run streamlit_app.py
 jupyter lab notebooks/analisis_predix.ipynb
 ```
 
-## Estructura
+## Structure
 
 ```
 ├── predix/
-│   ├── config.py      # tiendas, productos, calendario y supuestos
-│   ├── generate.py    # demanda simulada + inventario FIFO con caducidad
-│   ├── model.py       # binomial negativa censurada, pronóstico y métodos de referencia
-│   ├── inventory.py   # regla actual, nivel objetivo dinámico, simulación y ajuste del nivel de servicio
+│   ├── config.py      # stores, products, calendar and assumptions
+│   ├── generate.py    # simulated demand + FIFO inventory with expiry
+│   ├── model.py       # censored negative binomial, forecast and reference methods
+│   ├── inventory.py   # current rule, dynamic target level, simulation and service-level tuning
 │   └── plots.py
-├── data/              # ventas_diarias.csv (10,965 filas) y catalogo.csv
+├── data/              # ventas_diarias.csv (10,965 rows) and catalogo.csv
 ├── notebooks/
 ├── reports/figures/
 ├── tests/
 └── streamlit_app.py
 ```
 
-`ventas_diarias.csv` tiene una fila por tienda, producto y día:
-- `precio_mxn`
-- `inventario_inicial`, después de recibir y retirar lo caducado
-- `recibido`
-- `merma`
-- `ventas`
-- `inventario_final`: si es 0, el producto se agotó y la venta es un mínimo de la demanda
-- `pedido`, que llega al día siguiente
+`ventas_diarias.csv` has one row per store, product and day (column names in Spanish):
+- `precio_mxn`: price
+- `inventario_inicial`: opening stock, after receiving and removing expired units
+- `recibido`: received
+- `merma`: waste
+- `ventas`: sales
+- `inventario_final`: closing stock; if 0, the product sold out and sales are a lower bound of demand
+- `pedido`: order, delivered the next day
 
-## Supuestos y limitaciones
+## Assumptions and limitations
 
-- **Pedidos y entregas:** se pide los lunes y jueves y se recibe al día siguiente; el costo de mantener inventario es 25 % anual.
-- **Ventas perdidas:** se asume que se pierden, sin que el cliente sustituya por otra marca. Si sustituye, el beneficio real es menor.
-- **Alcance:** una tienda real tiene cientos de productos y promociones cruzadas. El método escala, pero los parámetros deben estimarse con datos propios.
-- **Datos que conviene empezar a registrar:** la hora en que se agota cada producto. Con ese dato la demanda censurada se estima todavía mejor.
+- **Orders and deliveries:** orders on Mondays and Thursdays, delivered the next day; holding cost is 25 % a year.
+- **Lost sales:** assumed lost, with no substitution by the customer. If customers substitute, the real benefit is smaller.
+- **Scope:** a real store has hundreds of products and cross promotions. The method scales, but the parameters must be estimated from the store's own data.
+- **Data worth starting to record:** the time each product sells out. With it, censored demand is estimated even better.
+
+## License
+
+Code under [MIT](LICENSE).
 
 ---
 
-**Jesús R. L. González**: Analista y Científico de Datos · Operaciones y Calidad · [LinkedIn](https://www.linkedin.com/in/jesus-r-l-gonzalez)
+**Jesús R. L. González** · Data Analyst and Data Scientist · Operations and quality · [LinkedIn](https://www.linkedin.com/in/jesus-r-l-gonzalez)
