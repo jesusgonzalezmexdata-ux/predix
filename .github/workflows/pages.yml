@@ -23,6 +23,7 @@ jobs:
         run: |
           mkdir -p _site/figures
           cp site/index.html _site/
+          cp -r site/ruta _site/ruta
           while IFS= read -r f; do [ -n "$f" ] && cp "$f" _site/figures/; done < site/figures.txt
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
