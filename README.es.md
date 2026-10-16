@@ -61,6 +61,20 @@ Incertidumbre: remuestreando las 27 semanas del periodo de evaluación (bootstra
 
 El análisis completo está en [`notebooks/analisis_predix.ipynb`](notebooks/analisis_predix.ipynb).
 
+## Aplicación de pedido por ruta (MVP)
+
+**[Abrir la aplicación](https://jesusgonzalezmexdata-ux.github.io/predix/ruta/)** · funciona sin señal después de la primera visita · los datos se quedan en el dispositivo
+
+Para distribuidores y preventa que definen el pedido de cada tienda. Sube el historial de visitas (CSV: fecha, tienda, producto, piezas dejadas, caducadas recogidas y si estaba agotado al llegar) y obtén:
+
+1. **Una hoja de carga** para la siguiente visita, con las devoluciones y ventas perdidas que espera el modelo con el pedido sugerido contra la regla actual.
+2. **Una pantalla por tienda en el celular**: piezas a dejar por producto, la marca «agotado al llegar» con un toque y un contador de caducadas recogidas. Al marcar un agotado la sugerencia se actualiza en el momento, porque un intervalo agotado solo dice que la demanda fue *al menos* lo que se dejó.
+3. **Un cierre de ruta** que exporta lo registrado en el mismo formato del historial, para que la próxima semana use las marcas de hoy, y un **piloto con grupo de control** opcional (la mitad de las tiendas, al azar, conserva la regla actual).
+
+Cómo decide: venta entre visitas = piezas dejadas − caducadas recogidas; los intervalos agotados son observaciones censuradas de una demanda binomial negativa por tienda y producto, con más peso a las semanas recientes y una dispersión por producto estimada con la verosimilitud censurada. El pedido es la menor cantidad que alcanza hasta la siguiente visita con la probabilidad elegida (70 % por omisión), o la razón crítica margen contra devolución si es mayor.
+
+En la ruta simulada incluida (23 tiendas, 5 productos, 12 semanas de visitas lunes y jueves, 38 % de intervalos agotados), la estimación censurada baja el error de la demanda de 18 % a 10 %, y el modelo espera 27 % menos devoluciones con las mismas ventas perdidas (costo de reabastecer mal: 7,231 contra 9,655 MXN por día de visita). Protocolo de piloto: [`docs/MVP_PILOTO.md`](docs/MVP_PILOTO.md). Diseño: archivo de Figma «Predix · MVP 3», dirección B «Señal de campo» (negro, blanco y un solo amarillo de señal, pensada para leerse a pleno sol).
+
 ## Tablero
 
 `streamlit_app.py` tiene cuatro pestañas:

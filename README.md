@@ -61,6 +61,20 @@ Uncertainty: resampling the 27 weeks of the evaluation period (bootstrap, 2,000 
 
 The full analysis is in [`notebooks/analisis_predix.ipynb`](notebooks/analisis_predix.ipynb) (Spanish).
 
+## Route order app (MVP)
+
+**[Open the app](https://jesusgonzalezmexdata-ux.github.io/predix/ruta/)** · works offline after the first visit · data stay on the device
+
+For distributors and route sales that set each store's order. Upload the visit history (CSV: date, store, product, units left, expired units collected, sold out on arrival) and get:
+
+1. **A load sheet** for the next visit, with the expected returns and lost sales of the suggested order against the current rule, according to the model.
+2. **A phone screen per store**: units to leave per product, a one-tap "sold out on arrival" mark and a stepper for expired units collected. Marking a stock-out updates the suggestion on the spot, because a sold-out interval only says demand was *at least* what was left.
+3. **A close-of-route export** in the same CSV format, so next week's plan uses today's marks, and an optional **pilot with a control group** (half the stores, chosen at random, keep the current rule).
+
+How it decides: sales between visits = units left − expired collected; sold-out intervals are censored observations of a negative binomial demand per store and product, with more weight on recent weeks and a shared dispersion per product estimated with the censored likelihood. The order is the smallest quantity that lasts until the following visit with the chosen probability (default 70 %), or the margin-versus-return critical ratio if higher.
+
+On the bundled simulated route (23 stores, 5 products, 12 weeks of Monday/Thursday visits, 38 % of intervals sold out), the censored estimate cuts the demand error from 18 % to 10 %, and the model expects 27 % fewer returns for the same lost sales (cost of poor replenishment MXN 7,231 vs 9,655 per visit day). Pilot protocol: [`docs/MVP_PILOTO.md`](docs/MVP_PILOTO.md) (Spanish). Design: Figma file "Predix · MVP 3", direction B "Señal de campo" (black, white and a single signal yellow, built to be read in direct sunlight).
+
 ## Dashboard
 
 `streamlit_app.py` has four tabs:

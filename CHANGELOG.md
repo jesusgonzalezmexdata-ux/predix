@@ -2,6 +2,13 @@
 
 All notable changes follow [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] - 2026-10-16
+
+### Added
+- Route order app (`site/ruta/`, published at `/ruta/` on the project page): visit-history CSV intake with row-level Spanish messages, load sheet, store-by-store phone screen with a one-tap stock-out mark and expired-units stepper, close-of-route CSV export and an optional pilot with a random control group. No dependencies; works offline (service worker); data stay on the device.
+- Route model (`site/ruta/model.js`): censored negative binomial per store and product with recency weights, dispersion by censored profile likelihood, coverage until the following visit and a minimum service level; live update when a stock-out is marked.
+- Thirteen Node tests (`tests/js/`) run in CI, and a pilot protocol (`docs/MVP_PILOTO.md`).
+
 ## [1.1.0] - 2026-10-16
 
 ### Added
