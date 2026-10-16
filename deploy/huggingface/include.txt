@@ -1,4 +1,0 @@
-streamlit_app.py
-predix
-data
-.streamlit

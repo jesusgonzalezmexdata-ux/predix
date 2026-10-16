@@ -1,0 +1,22 @@
+{
+  "title": "Demand and inventory for grocery stores",
+  "emoji": "🛒",
+  "colorFrom": "green",
+  "colorTo": "gray",
+  "entrypoint": "streamlit_app.py",
+  "requirements": [
+    "scipy",
+    "statsmodels",
+    "matplotlib",
+    "plotly"
+  ],
+  "include": [
+    "streamlit_app.py",
+    "predix",
+    "data"
+  ],
+  "short_description": "How much a corner shop should order (synthetic data)",
+  "summary": "Suggested order per store and product, the 14-day forecast and a comparison of both ordering rules (synthetic data).",
+  "repo": "predix",
+  "license": "mit"
+}
