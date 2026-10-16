@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Predix: pedido sugerido por ruta</title>
+<meta name="description" content="Pedido sugerido por tienda para rutas de reparto de perecederos: separa lo que se vendió de lo que se habría vendido cuando el producto se agota.">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="ruta.css">
+</head>
+<body>
+<a class="skip" href="#main">Ir al contenido</a>
+<header class="band">
+  <a class="brand" href="#/preparar" aria-label="Predix, inicio">Predix</a>
+  <span class="band-route" id="band-route"></span>
+  <nav class="tabs" aria-label="Secciones">
+    <a href="#/preparar" data-tab="preparar">Preparar</a>
+    <a href="#/ruta" data-tab="ruta">Ruta</a>
+    <a href="#/cierre" data-tab="cierre">Cierre</a>
+  </nav>
+</header>
+<main id="main" tabindex="-1"></main>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<noscript><p class="noscript">Esta herramienta necesita JavaScript para calcular el pedido en tu navegador.</p></noscript>
+<script type="module" src="app.js"></script>
+</body>
+</html>
