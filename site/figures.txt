@@ -1,0 +1,1 @@
+reports/figures/comparacion_politicas.png

@@ -2,6 +2,8 @@
 
 *[English](README.md) · Español*
 
+**[Demo en vivo](https://huggingface.co/spaces/JesusRLGonzalez/predix)** | **[Página del proyecto](https://jesusgonzalezmexdata-ux.github.io/predix/)**
+
 **Cuánto pedir cada lunes y jueves en una tienda de abarrotes, a partir de la demanda real y no solo de lo que se alcanzó a vender.**
 
 Python (pandas, statsmodels, SciPy) · binomial negativa censurada · simulación de inventario · Streamlit

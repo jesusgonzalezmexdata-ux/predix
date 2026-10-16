@@ -2,6 +2,8 @@
 
 *English · [Español](README.es.md)*
 
+**[Live demo](https://huggingface.co/spaces/JesusRLGonzalez/predix)** | **[Project page](https://jesusgonzalezmexdata-ux.github.io/predix/)**
+
 **How much to order every Monday and Thursday in a corner grocery store, based on real demand and not only on what the store managed to sell.**
 
 Python (pandas, statsmodels, SciPy) · censored negative binomial · inventory simulation · Streamlit
