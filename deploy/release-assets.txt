@@ -1,0 +1,2 @@
+reports/figures
+data/catalogo.csv
