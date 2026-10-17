@@ -1,5 +1,5 @@
 // Funciona sin señal: la aplicación queda guardada en el teléfono después de la primera visita.
-const CACHE = 'predix-ruta-v1';
+const CACHE = 'predix-ruta-v2';
 const SHELL = ['./', 'index.html', 'ruta.css', 'app.js', 'model.js', 'data.js', 'worker.js', 'icon.svg', 'manifest.webmanifest'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {
