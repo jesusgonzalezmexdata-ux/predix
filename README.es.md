@@ -133,3 +133,15 @@ jupyter lab notebooks/analisis_predix.ipynb
 ---
 
 **Jesús R. L. González**: Analista y Científico de Datos · Operaciones y Calidad · [LinkedIn](https://www.linkedin.com/in/jesus-r-l-gonzalez)
+
+## Aptitudes demostradas
+
+| Aptitud | Evidencia |
+|---|---|
+| Experiment design (A/B pilot) / Diseño de experimentos | `site/ruta/model.js` (`pilotGroup`: tiendas piloto y control), `site/ruta/app.js` |
+| Operations research (newsvendor) / Investigación de operaciones | `predix/inventory.py` |
+| Monte Carlo simulation / Simulación de Monte Carlo | `predix/inventory.py`, `predix/plots.py` |
+| Demand forecasting / Previsión de la demanda | `predix/model.py` (binomial negativa censurada) |
+| Inventory management, JavaScript / Gestión de inventarios | `predix/inventory.py`, `site/ruta/` |
+| Data visualization, Git, CI, testing / Visualización de datos, Git, integración continua, pruebas | `streamlit_app.py`, `.github/workflows/`, `tests/` |
+
