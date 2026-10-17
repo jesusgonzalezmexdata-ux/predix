@@ -153,7 +153,12 @@ function viewPreparar() {
       <p class="model-note">Es lo que espera el modelo con la demanda estimada de cada tienda, no un resultado medido. Lo confirma el piloto con grupo de control.</p>
       <div class="table-wrap"><table class="compare">
         <thead><tr><th scope="col">Producto</th><th scope="col">Cargar</th><th scope="col">Regla actual</th><th scope="col">Diferencia</th></tr></thead>
-        <tbody>${totals.map(c => `<tr><td>${esc(c.producto)}</td><td><b>${n0(c.cargar)}</b></td><td>${n0(c.regla)}</td><td>${c.cargar - c.regla > 0 ? '+' : ''}${n0(c.cargar - c.regla)}</td></tr>`).join('')}</tbody>
+        <tbody>${totals.map((c, k) => {
+          const diff = c.cargar - c.regla, open = S.abierto === c.producto;
+          const stores = open ? p.stores.flatMap(s => s.productos.filter(it => it.producto === c.producto).map(it => ({ s, it }))) : [];
+          return `<tr class="sheet-row${open ? ' open' : ''}"><td><button type="button" class="row-toggle" data-sheet="${k}" aria-expanded="${open}">${esc(c.producto)}</button></td><td><b>${n0(c.cargar)}</b></td><td>${n0(c.regla)}</td><td class="${diff < 0 ? 'good' : ''}">${diff > 0 ? '+' : ''}${n0(diff)}</td></tr>`
+            + (open ? stores.map(({ s, it }) => { const q = plannedQty(s, it), d = q - it.regla; return `<tr class="sheet-sub"><td>${esc(s.tienda)}${it.nota.tono === 'alerta' ? ' <span class="dot-alert" title="Agotados recientes"></span>' : ''}</td><td>${q}</td><td>${it.regla}</td><td class="${d < 0 ? 'good' : ''}">${d > 0 ? '+' : ''}${d}</td></tr>`; }).join('') : '');
+        }).join('')}</tbody>
       </table></div>
       <div class="btn-row no-print" style="margin-top:16px">
         <a class="btn btn-primary" href="#/ruta">Empezar la ruta</a>
@@ -226,7 +231,9 @@ function viewRuta(sel = null) {
   const p = S.plan;
   if (!p) return `<div class="page"><h1>Ruta</h1><p class="lede">Todavía no hay ruta. Prepárala con el historial de visitas.</p><p style="margin-top:16px"><a class="btn btn-primary" href="#/preparar">Preparar la ruta</a></p></div>`;
   const done = p.stores.filter(s => S.registros[s.tienda]).length;
-  const list = p.stores.map((s, i) => {
+  const f = S.filtro ?? 'todas';
+  const keep = s => f === 'todas' || (f === 'pendientes' && !S.registros[s.tienda]) || (f === 'agotados' && s.productos.some(it => it.nota.tono === 'alerta'));
+  const list = p.stores.map((s, i) => !keep(s) ? '' : (() => {
     const alerts = s.productos.filter(it => it.nota.tono === 'alerta').length;
     const meta = [`${s.productos.length} productos`];
     if (alerts) meta.push(`${alerts} con agotados recientes`);
@@ -234,9 +241,11 @@ function viewRuta(sel = null) {
     return `<li class="${S.registros[s.tienda] ? 'done' : ''}"><a href="#/tienda/${i}" ${i === sel ? 'aria-current="true"' : ''}>
       <span class="num">${S.registros[s.tienda] ? '✓' : i + 1}</span><span><span class="name">${esc(s.tienda)}</span><span class="meta">${esc(meta.join(' · '))}</span></span>
       <span class="qty-cell">${n0(storeTotal(s))}<small>pz</small></span></a></li>`;
-  }).join('');
+  })()).join('');
+  const filters = [['todas', 'Todas'], ['pendientes', `Pendientes (${p.stores.length - done})`], ['agotados', 'Con agotados']]
+    .map(([k, label]) => `<button type="button" class="filter" data-filter="${k}" aria-pressed="${f === k}">${label}</button>`).join('');
   return `<div class="route-layout ${sel != null ? 'has-store' : ''}">
-    <div class="route-list">${routeBar(`${done} de ${p.stores.length} entregadas`)}<ol class="stores">${list}</ol></div>
+    <div class="route-list">${routeBar(`${done} de ${p.stores.length} entregadas`)}<div class="filters" role="group" aria-label="Filtrar tiendas">${filters}</div><ol class="stores">${list || '<li class="empty-list">No hay tiendas con ese filtro.</li>'}</ol></div>
     <div class="store-pane">${sel != null ? viewStore(sel) : '<div class="store-empty">Elige una tienda para ver qué dejar.</div>'}</div>
   </div>`;
 }
@@ -280,7 +289,8 @@ function viewStore(i) {
   if (reg) sub.push('<span class="badge">Entregada</span>');
   const note = top && !isControl(s)
     ? `<p class="note">${esc(top.producto)}: ${esc(lowerFirst(top.nota.texto))}. ${top.sugerido > top.regla ? `Se ${top.sugerido - top.regla === 1 ? 'sugiere 1 pieza' : `sugieren ${top.sugerido - top.regla} piezas`} más que la regla para cubrir la demanda que no se vio.` : 'El pedido ya cuenta la demanda que no se vio.'}</p>` : '';
-  return `<article class="store enter" data-i="${i}">
+  const dir = S.dir === 'back' ? 'enter-back' : 'enter'; S.dir = null;
+  return `<article class="store ${dir}" data-i="${i}">
     ${routeBar(`Tienda ${i + 1} de ${p.stores.length}`)}
     <div class="store-head"><a class="back" href="#/ruta">‹ Tiendas</a><h1 class="store-title">${esc(s.tienda)}</h1><div class="store-sub">${sub.join('')}</div>${note}</div>
     <ul class="items" aria-label="Pedido sugerido">${items}</ul>
@@ -375,10 +385,13 @@ function render() {
   main().innerHTML = html;
 }
 
-function toast(msg) {
+function toast(msg, action = null) {
   const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove('show'), 2200);
+  t.innerHTML = `<span>${esc(msg)}</span>${action ? `<button type="button" class="toast-action">${esc(action.label)}</button>` : ''}`;
+  t.classList.toggle('has-action', !!action);
+  t.classList.add('show');
+  if (action) t.querySelector('.toast-action').onclick = () => { t.classList.remove('show'); action.run(); };
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => t.classList.remove('show'), action ? 6000 : 2200);
 }
 
 function animateNumber(el, from, to) {
@@ -423,10 +436,13 @@ function confirmStore(article) {
   save();
   const btn = article.querySelector('[data-act="confirm"]');
   btn.textContent = 'Entregado'; btn.classList.add('is-done');
-  toast(`Entrega guardada: ${s.tienda}`);
+  toast(`Entrega guardada: ${s.tienda}`, { label: 'Deshacer', run: () => {
+    delete S.registros[s.tienda]; save(); S.dir = 'back'; const target = `#/tienda/${i}`; if (location.hash === target) render(); else location.hash = target;
+    toast(`Entrega de ${s.tienda} deshecha`);
+  } });
   const next = S.plan.stores.findIndex((x, k) => k > i && !S.registros[x.tienda]);
   const any = next >= 0 ? next : S.plan.stores.findIndex(x => !S.registros[x.tienda]);
-  setTimeout(() => { location.hash = any >= 0 ? `#/tienda/${any}` : '#/cierre'; if (any < 0) toast('Ruta completa: descarga las visitas de hoy'); }, reduceMotion() ? 0 : 450);
+  setTimeout(() => { S.dir = 'next'; location.hash = any >= 0 ? `#/tienda/${any}` : '#/cierre'; }, reduceMotion() ? 0 : 450);
 }
 
 async function readFile(input) { const f = input.files?.[0]; return f ? { name: f.name, text: await f.text() } : null; }
@@ -434,6 +450,10 @@ async function readFile(input) { const f = input.files?.[0]; return f ? { name: 
 document.addEventListener('click', e => {
   const demo = e.target.closest('[data-demo].chip');
   if (demo) { demo.setAttribute('aria-pressed', demo.getAttribute('aria-pressed') !== 'true'); demo.textContent = demo.getAttribute('aria-pressed') === 'true' ? 'Agotado al llegar' : '¿Agotado al llegar?'; return; }
+  const flt = e.target.closest('[data-filter]');
+  if (flt) { S.filtro = flt.dataset.filter; render(); return; }
+  const sheet = e.target.closest('[data-sheet]');
+  if (sheet) { const name = loadTotals()[+sheet.dataset.sheet].producto; S.abierto = S.abierto === name ? null : name; render(); return; }
   const b = e.target.closest('[data-act]');
   if (!b) return;
   const act = b.dataset.act;
@@ -487,6 +507,28 @@ document.addEventListener('change', async e => {
   S.draft = {}; save(); compute();
 });
 document.addEventListener('input', e => { if (e.target.dataset.set === 'sl') document.getElementById('sl-out').textContent = `${e.target.value}%`; });
+
+// Deslizar entre tiendas (celular) y flechas del teclado (computadora)
+function goStore(delta) {
+  const r = route();
+  if (r.store == null || !S.plan) return;
+  const k = r.store + delta;
+  if (k < 0 || k >= S.plan.stores.length) return;
+  S.dir = delta > 0 ? 'next' : 'back'; location.hash = `#/tienda/${k}`;
+}
+let touch = null;
+document.addEventListener('touchstart', e => { if (e.target.closest('.store') && e.touches.length === 1) touch = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() }; }, { passive: true });
+document.addEventListener('touchend', e => {
+  if (!touch) return;
+  const dx = e.changedTouches[0].clientX - touch.x, dy = e.changedTouches[0].clientY - touch.y, dt = Date.now() - touch.t;
+  touch = null;
+  if (Math.abs(dx) > 70 && Math.abs(dx) > 2 * Math.abs(dy) && dt < 600) goStore(dx < 0 ? 1 : -1);
+}, { passive: true });
+document.addEventListener('keydown', e => {
+  if (e.target.closest('input, select, textarea') || e.altKey || e.ctrlKey || e.metaKey) return;
+  if (e.key === 'ArrowRight') goStore(1);
+  if (e.key === 'ArrowLeft') goStore(-1);
+});
 
 window.addEventListener('hashchange', () => { render(); if (!route().store) main().focus({ preventScroll: true }); window.scrollTo(0, 0); });
 
