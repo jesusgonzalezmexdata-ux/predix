@@ -40,10 +40,15 @@ button, input, select { font: inherit; color: inherit; }
 .section-title { font: 600 15px/1.3 var(--texto); }
 .muted { color: var(--gris-texto); }
 
+/* Pie de página con el aviso de derechos */
+.pie { width: calc(100% - 32px); max-width: 1088px; margin: 40px auto 0; padding: 16px 0 24px; border-top: 1px solid var(--linea); color: var(--gris-texto); font: 400 13px/1.5 var(--texto); }
+.pie a { color: var(--negro-senal); font-weight: 600; }
+
 /* Barra superior de la aplicación */
 .band { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 16px; min-height: 56px;
         padding: env(safe-area-inset-top) 16px 0; background: var(--negro-senal); color: var(--blanco); }
-.brand { font: 700 26px/1 var(--condensada); text-decoration: none; }
+.brand { display: inline-flex; align-items: center; gap: 10px; font: 700 26px/1 var(--condensada); letter-spacing: .02em; text-decoration: none; }
+.brand-mark { width: 22px; height: 22px; flex: none; }
 .band-route { font: 600 14px/1.2 var(--texto); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .85; }
 .tabs { display: flex; gap: 4px; }
 .tabs a { display: inline-flex; align-items: center; min-height: 48px; padding: 0 14px; font: 600 18px/1 var(--condensada);
@@ -53,9 +58,11 @@ button, input, select { font: inherit; color: inherit; }
   .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--blanco); border-top: 1px solid var(--linea); padding-bottom: env(safe-area-inset-bottom); gap: 0; }
   .tabs a { flex: 1; justify-content: center; color: var(--gris-texto); opacity: 1; border-bottom: 0; border-top: 4px solid transparent; min-height: 56px; }
   .tabs a[aria-current="page"] { color: var(--negro-senal); border-top-color: var(--amarillo-vial); }
-  main { padding-bottom: 88px; }
+  main { padding-bottom: 8px; }
+  .pie { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
   body.in-store .band, body.in-store .tabs { display: none; }
   body.in-store main { padding-bottom: 0; }
+  body.in-store .pie { display: none; }
 }
 
 main { outline: none; }
