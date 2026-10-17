@@ -206,10 +206,20 @@ function viewPreparar() {
             <li>Con eso estima la demanda diaria de cada tienda y producto (binomial negativa, con más peso a las últimas semanas).</li>
             <li>El pedido es la menor cantidad que alcanza hasta la siguiente visita con la probabilidad elegida, o la que equilibra margen y costo de devolución si es mayor.</li>
           </ol>
+          <p style="margin-top:12px"><a class="linkish" href="#/diseno">Ver el sistema de diseño</a></p>
         </section>
       </div>
     </div>
   </div>`;
+}
+
+const shortDate = d => new Date(d).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' }).replace(',', '').replace('.', '');
+const lowerFirst = t => t.charAt(0).toLowerCase() + t.slice(1);
+
+function routeBar(right) {
+  const p = S.plan, done = p.stores.filter(s => S.registros[s.tienda]).length;
+  return `<div class="route-bar"><div class="row"><span class="route-name">${esc(p.ruta ?? 'Ruta')} · ${esc(shortDate(p.fecha))}</span><span class="count">${right}</span></div>
+    <div class="progress" role="progressbar" aria-label="Tiendas entregadas" aria-valuemin="0" aria-valuemax="${p.stores.length}" aria-valuenow="${done}"><span style="width:${(100 * done) / p.stores.length}%"></span></div></div>`;
 }
 
 function viewRuta(sel = null) {
@@ -220,23 +230,19 @@ function viewRuta(sel = null) {
     const alerts = s.productos.filter(it => it.nota.tono === 'alerta').length;
     const meta = [`${s.productos.length} productos`];
     if (alerts) meta.push(`${alerts} con agotados recientes`);
-    if (S.settings.piloto) meta.push(s.grupo === 'control' ? 'control' : 'sugerido');
+    if (S.settings.piloto) meta.push(s.grupo === 'control' ? 'control' : 'pedido sugerido');
     return `<li class="${S.registros[s.tienda] ? 'done' : ''}"><a href="#/tienda/${i}" ${i === sel ? 'aria-current="true"' : ''}>
-      <span class="num">${i + 1}</span><span><span class="name">${esc(s.tienda)}</span><span class="meta">${esc(meta.join(', '))}</span></span>
-      <span class="qty">${n0(storeTotal(s))}</span></a></li>`;
+      <span class="num">${S.registros[s.tienda] ? '✓' : i + 1}</span><span><span class="name">${esc(s.tienda)}</span><span class="meta">${esc(meta.join(' · '))}</span></span>
+      <span class="qty-cell">${n0(storeTotal(s))}<small>pz</small></span></a></li>`;
   }).join('');
   return `<div class="route-layout ${sel != null ? 'has-store' : ''}">
-    <div class="route-list">
-      <div class="route-head"><div class="row"><span>Tiendas entregadas</span><span class="count">${done} de ${p.stores.length}</span></div>
-        <div class="progress" role="progressbar" aria-label="Tiendas entregadas" aria-valuemin="0" aria-valuemax="${p.stores.length}" aria-valuenow="${done}"><span style="width:${(100 * done) / p.stores.length}%"></span></div></div>
-      <ol class="stores">${list}</ol>
-    </div>
+    <div class="route-list">${routeBar(`${done} de ${p.stores.length} entregadas`)}<ol class="stores">${list}</ol></div>
     <div class="store-pane">${sel != null ? viewStore(sel) : '<div class="store-empty">Elige una tienda para ver qué dejar.</div>'}</div>
   </div>`;
 }
 
 function detailHTML(item) {
-  return `Regla actual ${n0(item.regla)}. <span class="${item.nota.tono === 'alerta' ? 'alerta' : ''}">${esc(item.nota.texto)}</span>.`;
+  return `Regla actual ${n0(item.regla)} · <span class="${item.nota.tono === 'alerta' ? 'alerta' : ''}">${esc(lowerFirst(item.nota.texto))}</span>`;
 }
 
 function viewStore(i) {
@@ -255,23 +261,29 @@ function viewStore(i) {
     return `<li class="item" data-j="${j}">
       <div class="item-row">
         <div><div class="item-name">${esc(it.producto)}</div><div class="item-detail">${detailHTML(it)}</div></div>
-        <div class="qty"><span class="qty-num" data-qty aria-live="polite" aria-label="Dejar ${q} piezas">${q}</span><span class="qty-unit">pz</span><span class="qty-was" data-was></span>
-          <span class="stepper adjust" role="group" aria-label="Ajustar cantidad"><button type="button" data-act="q-" aria-label="Dejar una pieza menos">−</button><button type="button" data-act="q+" aria-label="Dejar una pieza más">+</button></span></div>
+        <div><div class="qty"><span class="qty-num" data-qty aria-live="polite" aria-label="Dejar ${q} piezas">${q}</span><span class="qty-unit">pz</span></div><div class="qty-was" data-was></div></div>
       </div>
-      <div class="controls">
+      <div class="item-actions">
         <button class="chip" type="button" aria-pressed="${d.agotado}" data-act="agotado">${d.agotado ? 'Agotado al llegar' : '¿Agotado al llegar?'}</button>
-        <span class="returns" ${d.agotado ? 'hidden' : ''}><span class="stepper-label" id="dev-${j}">Caducadas recogidas</span>
-          <span class="stepper" role="group" aria-labelledby="dev-${j}"><button type="button" data-act="dev-" aria-label="Una caducada menos">−</button><output data-dev>${d.devuelto}</output><button type="button" data-act="dev+" aria-label="Una caducada más">+</button></span></span>
+        <button class="adjust-toggle" type="button" data-act="adjust" aria-expanded="false" aria-controls="adj-${j}">Ajustar</button>
       </div>
+      <div class="adjust-panel" id="adj-${j}"><div><div class="adjust-inner">
+        <span class="stepper-field returns" ${d.agotado ? 'hidden' : ''}><span class="stepper-label" id="dev-${j}">Caducadas recogidas</span>
+          <span class="stepper" role="group" aria-labelledby="dev-${j}"><button type="button" data-act="dev-" aria-label="Una caducada menos">−</button><output data-dev>${d.devuelto}</output><button type="button" data-act="dev+" aria-label="Una caducada más">+</button></span></span>
+        <span class="stepper-field"><span class="stepper-label" id="q-${j}">Piezas a dejar</span>
+          <span class="stepper" role="group" aria-labelledby="q-${j}"><button type="button" data-act="q-" aria-label="Dejar una pieza menos">−</button><output data-q>${q}</output><button type="button" data-act="q+" aria-label="Dejar una pieza más">+</button></span></span>
+      </div></div></div>
     </li>`;
   }).join('');
-  const sub = [`<span>Tienda ${i + 1} de ${p.stores.length}</span>`, `<span>${s.productos.length} productos</span>`];
+  const sub = [`<span>${s.productos.length} productos · visita del ${esc(longDate(p.fecha))}</span>`];
   if (S.settings.piloto) sub.push(`<span class="badge ${s.grupo}">${s.grupo === 'control' ? 'Control: regla actual' : 'Pedido sugerido'}</span>`);
   if (reg) sub.push('<span class="badge">Entregada</span>');
+  const note = top && !isControl(s)
+    ? `<p class="note">${esc(top.producto)}: ${esc(lowerFirst(top.nota.texto))}. ${top.sugerido > top.regla ? `Se ${top.sugerido - top.regla === 1 ? 'sugiere 1 pieza' : `sugieren ${top.sugerido - top.regla} piezas`} más que la regla para cubrir la demanda que no se vio.` : 'El pedido ya cuenta la demanda que no se vio.'}</p>` : '';
   return `<article class="store enter" data-i="${i}">
-    <div class="store-top"><a class="back" href="#/ruta">‹ Tiendas</a><h1 class="store-title">${esc(s.tienda)}</h1><div class="store-sub">${sub.join('')}</div></div>
-    ${top && !isControl(s) ? `<p class="note">${esc(top.producto)}: ${esc(top.nota.texto.toLowerCase())}. ${top.sugerido > top.regla ? `Se sugieren ${top.sugerido - top.regla} piezas más que la regla para cubrir la demanda que no se alcanzó a ver.` : 'El pedido ya cuenta la demanda que no se alcanzó a ver.'}</p>` : ''}
-    <ul class="items">${items}</ul>
+    ${routeBar(`Tienda ${i + 1} de ${p.stores.length}`)}
+    <div class="store-head"><a class="back" href="#/ruta">‹ Tiendas</a><h1 class="store-title">${esc(s.tienda)}</h1><div class="store-sub">${sub.join('')}</div>${note}</div>
+    <ul class="items" aria-label="Pedido sugerido">${items}</ul>
     <div class="store-foot"><div class="row"><span>Dejar en esta tienda</span><span class="total" data-total>${n0(storeTotal(s))} pz</span></div>
       <button class="btn btn-primary btn-block" type="button" data-act="confirm">${reg ? 'Actualizar entrega' : 'Confirmar entrega'}</button></div>
   </article>`;
@@ -306,6 +318,32 @@ function viewCierre() {
   </div>`;
 }
 
+const PALETTE = [['Blanco', '#FFFFFF', 'Fondo de las pantallas'], ['Negro señal', '#0E0F11', 'Texto y barra de ruta'], ['Amarillo vial', '#FFD21F', 'Única acción principal y avance'],
+  ['Agotado', '#D7261E', 'Marca de agotado y alertas'], ['A favor', '#1F7A3D', 'Mejoras frente a la regla'], ['Gris texto', '#4A4E54', 'Texto secundario y trazos']];
+const SUPPORT = [['Línea', '#C9CDD1'], ['Fondo de escritorio', '#E9EBE7'], ['Aviso', '#FFF4C2'], ['Texto de aviso', '#2B2A1F'], ['Pista de avance', '#3A3D42']];
+
+function viewDiseno() {
+  const sw = ([name, hex, use]) => `<div class="swatch"><i style="background:${hex}"></i><b>${name}</b><code>${hex}</code>${use ? `<span class="hint">${use}</span>` : ''}</div>`;
+  return `<div class="page stack">
+    <h1>Señal de campo</h1>
+    <p class="lede">Sistema visual de Predix, inspirado en la señalización vial y los chalecos de alta visibilidad: fondo blanco, negro y un solo amarillo para la acción. Es el que mejor se lee a pleno sol y con una mano; el texto principal tiene contraste de 19:1. Fuente: archivo de Figma «Predix · MVP 3 Pedido sugerido por ruta», propuesta B.</p>
+    <section class="panel"><h2 class="section-title">Paleta</h2><div class="swatches">${PALETTE.map(sw).join('')}</div>
+      <h2 class="section-title" style="margin-top:20px">Apoyo</h2><div class="swatches">${SUPPORT.map(sw).join('')}</div></section>
+    <section class="panel"><h2 class="section-title">Tipografía</h2>
+      <div class="specimen"><span class="store-name">Abarrotes Doña Lupe</span><span class="num-row"><b>18</b><span>pz</span></span>
+      <p class="hint">Barlow Condensed, derivada de los rótulos de carretera, para títulos y cantidades: caben cifras de tres dígitos sin achicar. Barlow normal para el texto.</p></div></section>
+    <section class="panel"><h2 class="section-title">Componentes</h2>
+      <div class="btn-row" style="margin-top:12px"><button class="chip" type="button" aria-pressed="false" data-demo>¿Agotado al llegar?</button><button class="chip" type="button" aria-pressed="true" data-demo>Agotado al llegar</button></div>
+      <div class="ds-components"><div class="item"><div class="item-row"><div><div class="item-name">Pan blanco grande</div><div class="item-detail">Regla actual 24 · caduca en 5 días</div></div>
+        <div class="qty"><span class="qty-num">18</span><span class="qty-unit">pz</span></div></div><div class="item-actions"><button class="chip" type="button" aria-pressed="false" data-demo>¿Agotado al llegar?</button></div></div>
+        <button class="btn btn-primary btn-block" type="button" data-demo>Confirmar entrega</button></div></section>
+    <section class="panel"><h2 class="section-title">Movimiento</h2><ul class="hint" style="margin:8px 0 0;padding-left:18px">
+      <li>Marcar agotado: el chip cambia de color en 150 ms y la cantidad cuenta hacia el nuevo valor en 250 ms.</li>
+      <li>Cambiar de tienda: la pantalla entra desde la derecha en 200 ms.</li>
+      <li>Nada se mueve sin una acción; con «reducir movimiento» activado, todo cambia al instante.</li></ul></section>
+  </div>`;
+}
+
 function pilotHTML() {
   if (!S.settings.piloto) return '';
   const since = S.settings.inicioPiloto ? new Date(`${S.settings.inicioPiloto}T00:00:00Z`) : null;
@@ -333,7 +371,7 @@ function render() {
   document.body.classList.toggle('in-store', r.store != null);
   document.querySelectorAll('.tabs a').forEach(a => { if (a.dataset.tab === r.tab) a.setAttribute('aria-current', 'page'); else a.removeAttribute('aria-current'); });
   document.getElementById('band-route').textContent = S.plan ? `${S.plan.ruta ?? ''}, ${longDate(S.plan.fecha)}` : '';
-  const html = r.tab === 'ruta' ? viewRuta(r.store ?? null) : r.tab === 'cierre' ? viewCierre() : viewPreparar();
+  const html = r.tab === 'ruta' ? viewRuta(r.store ?? null) : r.tab === 'cierre' ? viewCierre() : r.tab === 'diseno' ? viewDiseno() : viewPreparar();
   main().innerHTML = html;
 }
 
@@ -370,6 +408,7 @@ function updateItem(article, j) {
   chip.setAttribute('aria-pressed', d.agotado); chip.textContent = d.agotado ? 'Agotado al llegar' : '¿Agotado al llegar?';
   li.querySelector('.returns').hidden = d.agotado;
   li.querySelector('[data-dev]').textContent = d.devuelto;
+  li.querySelector('[data-q]').textContent = now;
   article.querySelector('[data-total]').textContent = `${n0(s.productos.reduce((a, x) => a + qtyOf(s, x), 0))} pz`;
 }
 
@@ -393,6 +432,8 @@ function confirmStore(article) {
 async function readFile(input) { const f = input.files?.[0]; return f ? { name: f.name, text: await f.text() } : null; }
 
 document.addEventListener('click', e => {
+  const demo = e.target.closest('[data-demo].chip');
+  if (demo) { demo.setAttribute('aria-pressed', demo.getAttribute('aria-pressed') !== 'true'); demo.textContent = demo.getAttribute('aria-pressed') === 'true' ? 'Agotado al llegar' : '¿Agotado al llegar?'; return; }
   const b = e.target.closest('[data-act]');
   if (!b) return;
   const act = b.dataset.act;
@@ -402,6 +443,7 @@ document.addEventListener('click', e => {
     const s = S.plan.stores[+article.dataset.i];
     if (li) {
       const j = +li.dataset.j, it = s.productos[j], d = draftOf(s, it);
+      if (act === 'adjust') { const open = li.classList.toggle('open'); b.setAttribute('aria-expanded', open); return; }
       if (act === 'agotado') { d.agotado = !d.agotado; if (d.agotado) d.devuelto = 0; }
       if (act === 'dev+') d.devuelto = Math.min(d.devuelto + 1, it.ultimaEntrega ?? 999);
       if (act === 'dev-') d.devuelto = Math.max(d.devuelto - 1, 0);
